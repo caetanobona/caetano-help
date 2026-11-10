@@ -13,17 +13,20 @@ A mention about an Orbit AI sync returning `429` opens a ticket. The bot replies
 `Retry-After` and cites the integration runbook.
 
 <p align="center">
-  <img src="docs/images/slack-runbook-guidance.png" width="328" alt="Slack thread showing an Orbit AI rate-limit request and the RB-INTEGRATION guidance">
+  <img src="docs/images/slack-runbook-guidance.png" width="382" alt="Slack thread showing an Orbit AI rate-limit request and the RB-INTEGRATION guidance">
 </p>
 
 ### 2. Add context to an existing ticket
 
-The first card asks which tool is affected. The requester selects **Add details**
-and describes the Atlas AI SSO failure. The bot cites `RB-ACCESS` and keeps the
-same ticket ID.
+1. **Open a request.** The requester writes “I can’t sign in to the tool.” The
+   first card asks which tool is affected and what happened.
+2. **Click Add details.** In the form, the requester enters “Atlas AI SSO login
+   denied. I expected to reach the dashboard.” and selects **Save details**.
+3. **Get a suggested next step.** The bot posts the second card in the same
+   thread, cites `RB-ACCESS`, and keeps the original ticket ID.
 
 <p align="center">
-  <img src="docs/images/slack-request-clarification.png" width="328" alt="Two Slack cards in the same thread showing a clarification question and the updated guidance for the same ticket">
+  <img src="docs/images/slack-request-clarification.png" width="382" alt="Before and after Add details: the first card asks for context and the second shows RB-ACCESS guidance for the same ticket">
 </p>
 
 ### 3. Escalate a request for human review
@@ -33,7 +36,7 @@ Selecting **Need human review** moves the ticket to **Awaiting human review** an
 keeps the handoff summary in the thread.
 
 <p align="center">
-  <img src="docs/images/slack-human-review.png" width="328" alt="Slack cards showing a human review recommendation and the transition to Awaiting human review">
+  <img src="docs/images/slack-human-review.png" width="382" alt="Slack cards showing a human review recommendation and the transition to Awaiting human review">
 </p>
 
 ## Try the demo
