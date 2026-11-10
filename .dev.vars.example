@@ -1,0 +1,5 @@
+# Fake local values only. Copy to ignored .dev.vars when starting locally.
+SLACK_SIGNING_SECRET=test-signing-secret
+SLACK_BOT_TOKEN=test-bot-token
+SLACK_TEAM_ID=TDEMO
+SUPPORT_USER_IDS=USUPPORT

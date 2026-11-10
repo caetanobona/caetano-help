@@ -60,3 +60,9 @@ If the application uses Durable Objects or Workflows, refer to the relevant best
 
 - Durable Objects: https://developers.cloudflare.com/durable-objects/best-practices/rules-of-durable-objects/
 - Workflows: https://developers.cloudflare.com/workflows/build/rules-of-workflows/
+
+## Portfolio handoff
+
+The owner-approved portfolio scope and progress are recorded in `docs/GOAL.md`.
+Read `docs/ARCHITECTURE.md` for delivery and authorization decisions, and
+`docs/SLACK_SETUP.md` for owner-only deployment/live verification steps.
