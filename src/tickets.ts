@@ -54,6 +54,18 @@ export async function createTicket(db: D1Database, input: Intake): Promise<Ticke
 export function getTicket(db: D1Database, team: string, channel: string, id: string) {
 	return db.prepare('SELECT * FROM tickets WHERE team=? AND channel=? AND id=?').bind(team, channel, id).first<Ticket>();
 }
+export async function addTicketDetails(
+	db: D1Database, ticket: Ticket, requester: string, version: number, text: string,
+) {
+	const decision = triage(text);
+	return db
+		.prepare(`UPDATE tickets SET text=?, category=?, route=?, version=version+1,
+			last_actor=?, last_action='details_added', updated_at=CURRENT_TIMESTAMP
+			WHERE id=? AND team=? AND channel=? AND requester=? AND version=?
+			AND status IN ('open','in_progress') RETURNING *`)
+		.bind(text, decision.category, decision.route, requester, ticket.id, ticket.team, ticket.channel, requester, version)
+		.first<Ticket>();
+}
 export async function transitionTicket(
 	db: D1Database,
 	ticket: Ticket,

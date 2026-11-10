@@ -1,14 +1,22 @@
 {
 	"display_information": {
 		"name": "Caetano-Help",
-		"description": "Fictional AI-tool support triage portfolio demo",
+		"description": "Open an AI support request, get guidance, and track it in Slack.",
 		"background_color": "#542b73"
 	},
 	"features": {
 		"bot_user": { "display_name": "Caetano-Help", "always_online": false },
+		"shortcuts": [
+			{
+				"name": "Create support ticket",
+				"callback_id": "create_support_ticket",
+				"description": "Open a ticket from this Slack message",
+				"type": "message"
+			}
+		],
 		"slash_commands": [
 			{
-				"command": "/caetano",
+				"command": "/caetano-help",
 				"url": "https://YOUR-WORKER.workers.dev/slack/commands",
 				"description": "Open and track AI support requests",
 				"usage_hint": "help | new | list | queue | status CH-…",

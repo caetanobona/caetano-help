@@ -24,12 +24,12 @@ const signals: Record<SupportedCategory, RegExp> = {
 
 // Lexical retrieval over a deliberately small corpus, not semantic search or RAG.
 export function triage(text: string): TriageResult {
-	const summary = text
+	const normalized = text.slice(0, 2000)
 		.replace(/<@[A-Z0-9]+>/gi, '')
 		.replace(/\s+/g, ' ')
-		.trim()
-		.slice(0, 280);
-	const query = summary
+		.trim();
+	const summary = normalized.slice(0, 280);
+	const query = normalized
 		.normalize('NFD')
 		.replace(/[\u0300-\u036f]/g, '')
 		.toLowerCase();

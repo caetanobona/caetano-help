@@ -1,8 +1,9 @@
 import type { KnownBlock } from '@slack/types';
 import { verifySlackRequest } from './signature';
-import { createTicket, getTicket, history, listTickets, queueTickets, transitionTicket, type Ticket } from './tickets';
+import { addTicketDetails, createTicket, getTicket, history, listTickets, queueTickets, transitionTicket, type Ticket } from './tickets';
 import { slackApi } from './slack-api';
 import { helpText, intakeModal, ticketCard } from './slack-ui';
+import { triage } from './triage';
 export interface SupportEnv {
 	SLACK_SIGNING_SECRET: string;
 	SLACK_BOT_TOKEN: string;
@@ -15,6 +16,8 @@ const privateReply = (text: string) => json({ response_type: 'ephemeral', text }
 const object = (x: unknown): Record<string, any> | null =>
 	x !== null && typeof x === 'object' && !Array.isArray(x) ? (x as Record<string, any>) : null;
 const id = (x: unknown): x is string => typeof x === 'string' && /^[A-Z0-9_-]{1,100}$/.test(x);
+const messageTimestamp = (x: unknown): x is string => typeof x === 'string' && /^\d{1,20}\.\d{6}$/.test(x);
+const validTicketId = (x: unknown): x is string => typeof x === 'string' && /^CH-[a-f0-9-]{36}$/.test(x);
 function supportUser(env: SupportEnv, user: string) {
 	return (env.SUPPORT_USER_IDS ?? '')
 		.split(',')
@@ -33,6 +36,12 @@ function notify(env: SupportEnv, channel: string, user: string, text: string, bl
 		unfurl_links: false,
 		unfurl_media: false,
 	});
+}
+async function openForm(
+	env: SupportEnv, channel: string, user: string, trigger: string, view: ReturnType<typeof intakeModal>,
+) {
+	const result = await slackApi(env.SLACK_BOT_TOKEN, 'views.open', { trigger_id: trigger, view });
+	if (!result) await notify(env, channel, user, 'The form could not open. Try opening it again.');
 }
 async function publish(env: SupportEnv, ticket: Ticket, key: string) {
 	const db = env.DB!;
@@ -79,7 +88,7 @@ export async function handleSupport(request: Request, env: SupportEnv, ctx: Exec
 		const team = form.get('team_id'),
 			channel = form.get('channel_id'),
 			user = form.get('user_id');
-		if (form.get('command') !== '/caetano' || !id(team) || !id(channel) || !id(user))
+		if (form.get('command') !== '/caetano-help' || !id(team) || !id(channel) || !id(user))
 			return new Response('Invalid command', { status: 400 });
 		if (!env.SLACK_TEAM_ID || env.SLACK_TEAM_ID !== team) return new Response('Workspace not configured or authorized', { status: 403 });
 		const text = (form.get('text') ?? '').trim();
@@ -90,13 +99,7 @@ export async function handleSupport(request: Request, env: SupportEnv, ctx: Exec
 			if (!trigger) return new Response('Missing trigger', { status: 400 });
 			background(
 				ctx,
-				async () => {
-					const result = await slackApi(env.SLACK_BOT_TOKEN, 'views.open', {
-						trigger_id: trigger,
-						view: intakeModal({ team, channel, requester: user }),
-					});
-					if (!result) await notify(env, channel, user, 'The form could not open. Run /caetano new again.');
-				},
+				() => openForm(env, channel, user, trigger, intakeModal({ team, channel, requester: user })),
 				env,
 				channel,
 				user,
@@ -121,7 +124,7 @@ export async function handleSupport(request: Request, env: SupportEnv, ctx: Exec
 						const tickets = await listTickets(env.DB!, team, channel, user);
 						result = tickets.length
 							? tickets.map((t) => `${t.id} · ${t.status} · ${t.priority}`).join('\n')
-							: 'No requests found for you in this channel.';
+							: 'You have no requests in this channel. Use /caetano-help new to open one.';
 					} else {
 						const ticket = await getTicket(env.DB!, team, channel, text.slice(7).trim());
 						if (!ticket || (!supportUser(env, user) && ticket.requester !== user))
@@ -156,8 +159,27 @@ export async function handleSupport(request: Request, env: SupportEnv, ctx: Exec
 		user = object(payload.user)?.id;
 	if (!id(team) || !id(user) || !env.DB) return new Response('Invalid interaction or storage unavailable', { status: 400 });
 	if (!env.SLACK_TEAM_ID || env.SLACK_TEAM_ID !== team) return new Response('Workspace not configured or authorized', { status: 403 });
+	if (payload.type === 'message_action' && payload.callback_id === 'create_support_ticket') {
+		const conversation = object(payload.channel);
+		const channel = conversation?.id;
+		const message = object(payload.message);
+		const ts = message?.ts;
+		const threadTs = message?.thread_ts ?? ts;
+		const trigger = payload.trigger_id;
+		if (!id(channel) || !/^[CG]/.test(channel) || conversation?.is_mpim || !messageTimestamp(ts) ||
+			!messageTimestamp(threadTs) || typeof trigger !== 'string' || !trigger) {
+			return new Response('Invalid message shortcut context', { status: 400 });
+		}
+		const view = intakeModal(
+			{ team, channel, requester: user, sourceMessage: { ts, threadTs } },
+			typeof message?.text === 'string' ? message.text : undefined,
+		);
+		background(ctx, () => openForm(env, channel, user, trigger, view), env, channel, user);
+		return new Response('');
+	}
 	if (payload.type === 'view_submission') {
 		const view = object(payload.view);
+		const updating = view?.callback_id === 'support_details';
 		let metadata: Record<string, any> | null;
 		try {
 			metadata = object(JSON.parse(view?.private_metadata ?? ''));
@@ -165,8 +187,8 @@ export async function handleSupport(request: Request, env: SupportEnv, ctx: Exec
 			return new Response('Invalid context', { status: 400 });
 		}
 		if (
-			view?.callback_id !== 'support_intake' ||
-			!id(view.id) ||
+			(!updating && view?.callback_id !== 'support_intake') ||
+			!id(view?.id) ||
 			metadata?.team !== team ||
 			metadata?.requester !== user ||
 			!id(metadata?.channel)
@@ -178,9 +200,28 @@ export async function handleSupport(request: Request, env: SupportEnv, ctx: Exec
 		const errors: Record<string, string> = {};
 		if (typeof details !== 'string' || details.trim().length < 10 || details.length > 2000)
 			errors.details = 'Describe the tool, issue and expected behavior (10–2000 characters).';
-		if (priority !== 'normal' && priority !== 'high') errors.priority = 'Choose normal or high impact.';
+		if (!updating && priority !== 'normal' && priority !== 'high') errors.priority = 'Choose normal or high impact.';
 		if (Object.keys(errors).length) return json({ response_action: 'errors', errors });
 		const channel = metadata.channel;
+		const source = object(metadata.sourceMessage);
+		if (metadata.sourceMessage !== undefined && (!messageTimestamp(source?.ts) || !messageTimestamp(source?.threadTs)))
+			return new Response('Invalid message reference', { status: 400 });
+		if (updating) {
+			const ref = object(metadata.ticket);
+			if (!validTicketId(ref?.id) || !Number.isSafeInteger(ref?.version) || ref?.version < 0)
+				return new Response('Invalid ticket reference', { status: 400 });
+			background(ctx, async () => {
+				const ticket = await getTicket(env.DB!, team, channel, ref.id);
+				if (!ticket || ticket.requester !== user) {
+					await notify(env, channel, user, 'Only the requester can add details to this ticket.');
+					return;
+				}
+				const updated = await addTicketDetails(env.DB!, ticket, user, ref.version, details);
+				if (updated) await publish(env, updated, `updated:${updated.id}:${updated.version}`);
+				else await notify(env, channel, user, `This form is out of date. Run /caetano-help status ${ticket.id} for the current card.`);
+			}, env, channel, user);
+			return json({ response_action: 'clear' });
+		}
 		background(
 			ctx,
 			async () => {
@@ -188,9 +229,10 @@ export async function handleSupport(request: Request, env: SupportEnv, ctx: Exec
 					team,
 					channel,
 					requester: user,
-					sourceKey: `view:${view.id}`,
+					sourceKey: source ? `message:${channel}:${source.ts}` : `view:${view.id}`,
 					text: details,
 					priority,
+					threadTs: source?.threadTs,
 				});
 				await publish(env, ticket, `created:${ticket.source_key}`);
 			},
@@ -207,25 +249,49 @@ export async function handleSupport(request: Request, env: SupportEnv, ctx: Exec
 		if (
 			!id(channel) ||
 			actions.length !== 1 ||
-			!['ticket_claim', 'ticket_escalate', 'ticket_resolve'].includes(action?.action_id) ||
+			!['ticket_claim', 'ticket_escalate', 'ticket_resolve', 'ticket_details'].includes(action?.action_id) ||
 			typeof action?.value !== 'string'
 		)
 			return new Response('Invalid action', { status: 400 });
 		const [ticketId, versionText, ...extra] = action.value.split('|');
-		if (!/^CH-[a-f0-9-]{36}$/.test(ticketId) || !/^\d{1,8}$/.test(versionText) || extra.length)
+		if (!validTicketId(ticketId) || !/^\d{1,8}$/.test(versionText) || extra.length)
 			return new Response('Invalid action value', { status: 400 });
 		background(
 			ctx,
 			async () => {
 				const ticket = await getTicket(env.DB!, team, channel, ticketId);
-				const updated =
-					ticket && (await transitionTicket(env.DB!, ticket, user, action.action_id.slice(7), Number(versionText), supportUser(env, user)));
+				if (action.action_id === 'ticket_details') {
+					if (!ticket || ticket.requester !== user) {
+						await notify(env, channel, user, 'Only the requester can add details to this ticket.');
+						return;
+					}
+					if (ticket.version !== Number(versionText) || ticket.status === 'resolved' ||
+						ticket.status === 'escalated' || !triage(ticket.text).question) {
+						await notify(env, channel, user, `This card is out of date. Run /caetano-help status ${ticketId} for the current card.`);
+						return;
+					}
+					if (typeof payload.trigger_id === 'string' && payload.trigger_id) {
+						await openForm(env, channel, user, payload.trigger_id, intakeModal({
+							team, channel, requester: user, ticket: { id: ticket.id, version: ticket.version },
+						}, ticket.text.replace(/<@[A-Z0-9]+>/gi, '').trim()));
+					}
+					return;
+				}
+			const support = supportUser(env, user);
+			const kind = action.action_id.slice(7) as 'claim' | 'escalate' | 'resolve';
+			if (!ticket || (!support && (kind === 'claim' || user !== ticket.requester))) {
+				await notify(env, channel, user, 'You don’t have permission to take this action. Ask a support teammate for help.');
+				return;
+			}
+			const updated = await transitionTicket(env.DB!, ticket, user, kind, Number(versionText), support);
 				if (!updated) {
 					await notify(
 						env,
 						channel,
 						user,
-						'Action unavailable: unauthorized, already resolved, or stale card. Use /caetano status with the request ID.',
+					ticket.status === 'resolved'
+						? 'This request is already resolved. Use /caetano-help new if you need more help.'
+						: `This action is no longer available on this card. Run /caetano-help status ${ticketId} to get the latest one.`,
 					);
 					return;
 				}

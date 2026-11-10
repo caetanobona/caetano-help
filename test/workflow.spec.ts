@@ -39,7 +39,7 @@ async function invoke(path: string, fields: Record<string, string>, valid = true
 	await waitOnExecutionContext(ctx);
 	return response;
 }
-const command = (text: string) => ({ command: '/caetano', text, team_id: 'T1', channel_id: 'C1', user_id: 'U1', trigger_id: 'trigger-1' });
+const command = (text: string) => ({ command: '/caetano-help', text, team_id: 'T1', channel_id: 'C1', user_id: 'U1', trigger_id: 'trigger-1' });
 const submission = (text: string) => ({
 	type: 'view_submission',
 	team: { id: 'T1' },
@@ -67,7 +67,7 @@ it('serves signed help privately and rejects forged requests', async () => {
 	expect(result.status).toBe(200);
 	const body = (await result.json()) as any;
 	expect(body.response_type).toBe('ephemeral');
-	expect(body.text).toContain('/caetano new');
+	expect(body.text).toContain('/caetano-help new');
 	expect((await invoke('/slack/commands', command('help'), false)).status).toBe(401);
 	expect(calls).toHaveLength(0);
 });
@@ -77,6 +77,7 @@ it('opens a modal using the short-lived trigger, not response_url', async () => 
 	expect(calls[0].method).toBe('views.open');
 	expect(calls[0].body.trigger_id).toBe('trigger-1');
 	expect(calls[0].body.view.callback_id).toBe('support_intake');
+	expect(calls[0].body.view.blocks[0].text.text).toContain('posted in this channel');
 	expect(calls[0].body.view.blocks.some((b: any) => b.type === 'input')).toBe(true);
 });
 it('validates modal fields with inline errors before saving', async () => {
@@ -87,12 +88,69 @@ it('validates modal fields with inline errors before saving', async () => {
 	});
 	expect(calls).toHaveLength(0);
 });
+it('creates one ticket from a message shortcut and replies in the original thread', async () => {
+	const interact = (payload: object, valid = true) => invoke('/slack/interactions', { payload: JSON.stringify(payload) }, valid);
+	const shortcut = {
+		type: 'message_action', callback_id: 'create_support_ticket', trigger_id: 'trigger-1',
+		team: { id: 'T1' }, user: { id: 'U1' }, channel: { id: 'C1' },
+		message: { text: 'Orbit AI API returns 429', ts: '1700000002.000001', thread_ts: '1700000000.000001' },
+	};
+	expect((await interact(shortcut, false)).status).toBe(401);
+	expect((await interact(shortcut)).status).toBe(200);
+	const modal = calls[0].body.view;
+	expect(calls[0].method).toBe('views.open');
+	expect(modal.blocks.find((b: any) => b.block_id === 'details').element.initial_value).toBe(shortcut.message.text);
+	expect(calls).toHaveLength(1);
+	for (const viewId of ['V1', 'V2']) {
+		const submitted = submission(shortcut.message.text);
+		submitted.view.id = viewId;
+		submitted.view.private_metadata = modal.private_metadata;
+		expect((await interact(submitted)).status).toBe(200);
+	}
+	const posts = calls.filter((call) => call.method === 'chat.postMessage');
+	expect(posts).toHaveLength(1);
+	expect(posts[0].body.thread_ts).toBe(shortcut.message.thread_ts);
+	expect(await db.prepare('SELECT source_key FROM tickets').first()).toEqual({ source_key: 'message:C1:1700000002.000001' });
+});
+it('lets the requester refine the same ticket once and records the update', async () => {
+	const interact = (payload: object) => invoke('/slack/interactions', { payload: JSON.stringify(payload) });
+	await interact(submission('I cannot get into the tool.'));
+	const card = calls[0].body;
+	const button = card.blocks.find((block: any) => block.type === 'actions').elements
+		.find((element: any) => element.action_id === 'ticket_details');
+	expect(button).toBeDefined();
+	const action = {
+		type: 'block_actions', trigger_id: 'trigger-1', team: { id: 'T1' }, user: { id: 'U1' },
+		channel: { id: 'C1' }, actions: [button],
+	};
+	await interact({ ...action, user: { id: 'U2' } });
+	expect(calls.some((call) => call.method === 'views.open')).toBe(false);
+	expect((await interact(action)).status).toBe(200);
+	const modal = calls.find((call) => call.method === 'views.open')!.body.view;
+	const text = 'I cannot get into the tool. '.padEnd(320, '.') + ' Atlas AI SSO login denied.';
+	const submitted = submission(text);
+	submitted.view.callback_id = modal.callback_id;
+	submitted.view.private_metadata = modal.private_metadata;
+	expect((await interact({ ...submitted, user: { id: 'U2' } })).status).toBe(400);
+	await Promise.all([interact(submitted), interact(submitted)]);
+	const posts = calls.filter((call) => call.method === 'chat.postMessage');
+	expect(posts).toHaveLength(2);
+	expect(posts[1].body.text).toContain('RB-ACCESS');
+	expect(posts[1].body.thread_ts).toBe('1700000001.001');
+	const ticket = (await getTicket(db, 'T1', 'C1', button.value.split('|')[0]))!;
+	expect(ticket).toMatchObject({ text, category: 'access', status: 'open', version: 1 });
+	expect((await history(db, ticket)).map((entry) => entry.action)).toEqual(['created', 'details_added']);
+});
 it('persists a modal intake once, posts a sourced card, and completes authorized lifecycle', async () => {
 	const payload = submission('Orbit AI API returns 429');
 	for (let i = 0; i < 2; i++) expect((await invoke('/slack/interactions', { payload: JSON.stringify(payload) })).status).toBe(200);
 	const posts = calls.filter((c) => c.method === 'chat.postMessage');
 	expect(posts).toHaveLength(1);
 	const card = posts[0].body;
+	expect(card.blocks[0].text.text).toBe('Support request');
+	expect(card.blocks[1].elements[0].text).toContain('*Open*');
+	expect(card.blocks[2].text).toMatchObject({ type: 'mrkdwn', text: expect.stringContaining('*Suggested next step*') });
+	expect(card.blocks.at(-1).elements[1].text).toContain('RB-INTEGRATION');
 	expect(card.text).toContain('RB-INTEGRATION');
 	expect(card.blocks.some((b: any) => b.type === 'actions')).toBe(true);
 	const id = card.blocks.find((b: any) => b.type === 'actions').elements[0].value.split('|')[0];
@@ -130,7 +188,7 @@ it('persists a modal intake once, posts a sourced card, and completes authorized
 	expect((await history(db, t!)).map((h) => h.action)).toEqual(['created', 'claim', 'escalate', 'resolve']);
 	const status = await invoke('/slack/commands', command(`status ${id}`));
 	expect(status.status).toBe(200);
-	expect(calls.filter((c) => c.method === 'chat.postEphemeral').at(-1)?.body.text).toContain('resolved');
+	expect(calls.filter((c) => c.method === 'chat.postEphemeral').at(-1)?.body.text).toContain('Support request · Resolved');
 });
 it('does not accept tampered modal workspace/requester metadata', async () => {
 	const payload = submission('Atlas AI login is denied');
