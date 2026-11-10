@@ -1,0 +1,27 @@
+{
+	"display_information": {
+		"name": "Caetano-Help",
+		"description": "Fictional AI-tool support triage portfolio demo",
+		"background_color": "#542b73"
+	},
+	"features": {
+		"bot_user": { "display_name": "Caetano-Help", "always_online": false },
+		"slash_commands": [
+			{
+				"command": "/caetano",
+				"url": "https://YOUR-WORKER.workers.dev/slack/commands",
+				"description": "Open and track AI support requests",
+				"usage_hint": "help | new | list | queue | status CH-…",
+				"should_escape": false
+			}
+		]
+	},
+	"oauth_config": { "scopes": { "bot": ["app_mentions:read", "chat:write", "commands"] } },
+	"settings": {
+		"event_subscriptions": { "request_url": "https://YOUR-WORKER.workers.dev/slack/events", "bot_events": ["app_mention"] },
+		"interactivity": { "is_enabled": true, "request_url": "https://YOUR-WORKER.workers.dev/slack/interactions" },
+		"org_deploy_enabled": false,
+		"socket_mode_enabled": false,
+		"token_rotation_enabled": false
+	}
+}
