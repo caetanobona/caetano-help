@@ -8,6 +8,8 @@
 		"start": "wrangler dev",
 		"test": "vitest",
 		"cf-typegen": "wrangler types",
+		"demo:build": "node scripts/build-demo.mjs",
+		"eval": "npm run demo:build && node scripts/evaluate.mjs",
 		"test:types": "tsc --noEmit && tsc --noEmit -p test/tsconfig.json",
 		"db:local": "wrangler d1 migrations apply DB --local"
 	},

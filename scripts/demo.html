@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+	<meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>
+		Caetano-Help · Offline portfolio demo
+	</title>
+	<style>
+		* {
+			box-sizing: border-box;
+		}
+		body {
+			margin: 0;
+			background: #f5f3f8;
+			color: #222039;
+			font:
+				16px/1.5 system-ui,
+				sans-serif;
+		}
+		main {
+			max-width: 1160px;
+			margin: auto;
+			padding: 36px 24px;
+		}
+		h1 {
+			font-size: 36px;
+			line-height: 1.1;
+			margin: 12px 0;
+		}
+		h2 {
+			font-size: 18px;
+		}
+		p {
+			max-width: 78ch;
+		}
+		.tag {
+			color: #5c397d;
+			font-weight: 700;
+			text-transform: uppercase;
+			font-size: 12px;
+			letter-spacing: 0.12em;
+		}
+		.grid {
+			display: grid;
+			grid-template-columns: 1fr 1.25fr;
+			gap: 24px;
+			margin-top: 24px;
+		}
+		.panel {
+			background: white;
+			border: 1px solid #ded9e7;
+			border-radius: 12px;
+			padding: 24px;
+			min-width: 0;
+		}
+		label {
+			font-weight: 600;
+			display: block;
+			margin: 16px 0 8px;
+		}
+		select,
+		textarea,
+		button {
+			font: inherit;
+			border: 1px solid #c8bfd6;
+			border-radius: 6px;
+			padding: 10px;
+			width: 100%;
+			background: white;
+		}
+		textarea {
+			min-height: 150px;
+			resize: vertical;
+		}
+		button {
+			background: #542b73;
+			color: white;
+			font-weight: 600;
+			margin-top: 12px;
+			cursor: pointer;
+		}
+		pre {
+			white-space: pre-wrap;
+			word-break: break-word;
+			font-size: 12px;
+			background: #f7f5fa;
+			padding: 12px;
+		}
+		.message {
+			display: flex;
+			gap: 12px;
+		}
+		.avatar {
+			background: #542b73;
+			color: white;
+			font-weight: 800;
+			border-radius: 8px;
+			padding: 8px;
+			height: 42px;
+		}
+		.content {
+			min-width: 0;
+			flex: 1;
+		}
+		.block {
+			white-space: pre-wrap;
+			margin: 12px 0;
+			font-size: 14px;
+		}
+		.actions {
+			display: flex;
+			gap: 6px;
+			flex-wrap: wrap;
+		}
+		.actions button {
+			width: auto;
+			background: #f7f5fa;
+			color: #70677b;
+			font-size: 12px;
+			cursor: default;
+		}
+		.notice {
+			font-size: 13px;
+			color: #655d71;
+			border-left: 3px solid #b59acb;
+			padding-left: 12px;
+		}
+		.sources a {
+			color: #542b73;
+		}
+		details {
+			margin-top: 20px;
+		}
+		@media (max-width: 760px) {
+			.grid {
+				grid-template-columns: 1fr;
+			}
+			main {
+				padding: 20px;
+			}
+			h1 {
+				font-size: 28px;
+			}
+		}
+	</style>
+	<main>
+		<span class="tag">AI Engineer & Support Lead · Portfolio</span>
+		<h1>Support that shows its evidence.</h1>
+		<p>
+			Caetano-Help triages fictional AI-tool requests, cites runbooks and prepares human handoffs. Explore the actual deterministic triage
+			and Block Kit payload below.
+		</p>
+		<p class="notice">
+			Offline simulation. No Slack connection, model call, customer data or ticket storage. The automated workerd/D1 suite validates the
+			real persistent workflow. The layout approximates Slack; it is not an official Slack renderer.
+		</p>
+		<div class="grid">
+			<section class="panel">
+				<h2>1. Bring a support request</h2>
+				<label for="examples">Labeled scenario</label
+				><select id="examples"></select
+				><label for="request">Request</label><textarea id="request"></textarea><button id="run">Run triage</button>
+				<h2>What this demonstrates</h2>
+				<p>
+					Signed webhooks · slash commands · modal intake · thread replies · owner permissions · audit history · optimistic concurrency ·
+					lexical evidence retrieval
+				</p>
+				<p class="notice">
+					The real app uses /caetano new, list and status. Buttons act on persisted tickets only inside Slack; they are disabled here.
+				</p>
+			</section>
+			<section class="panel">
+				<h2>2. Inspect the response</h2>
+				<div class="message">
+					<div class="avatar">CH</div>
+					<div class="content">
+						<strong>Caetano-Help</strong><span class="tag"> APP</span>
+						<div id="card"></div>
+					</div>
+				</div>
+				<details>
+					<summary>Structured decision</summary>
+					<pre id="decision"></pre>
+				</details>
+				<details>
+					<summary>Actual Block Kit payload</summary>
+					<pre id="payload"></pre>
+				</details>
+			</section>
+		</div>
+		<p class="notice">
+			Evidence is fictional. This is retrieval plus templates, not model-generated RAG. Classification is intentionally conservative and
+			limited; production accuracy has not been established.
+		</p>
+	</main>
+	<script type="module">
+		import { triage } from './triage.js';
+		import { ticketCard } from './slack-ui.js';
+		import { cases } from './cases.js';
+		const el = (id) => document.getElementById(id);
+		for (const item of cases) {
+			const option = document.createElement('option');
+			option.value = item.id;
+			option.textContent = item.id;
+			el('examples').append(option);
+		}
+		function render() {
+			const text = el('request').value;
+			const decision = triage(text);
+			const ticket = {
+				id: 'CH-OFFLINE-PREVIEW',
+				status: 'open',
+				priority: 'normal',
+				requester: 'DEMO-REQUESTER',
+				assignee: null,
+				version: 0,
+				text,
+			};
+			const payload = ticketCard(ticket);
+			el('card').replaceChildren();
+			for (const block of payload.blocks) {
+				const element = document.createElement('div');
+				element.className = 'block';
+				if (block.text) element.textContent = block.text.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+				if (block.type === 'actions') {
+					element.className = 'actions';
+					for (const action of block.elements) {
+						const b = document.createElement('button');
+						b.textContent = action.text.text;
+						b.disabled = true;
+						element.append(b);
+					}
+				}
+				el('card').append(element);
+			}
+			el('decision').textContent = JSON.stringify(decision, null, 2);
+			el('payload').textContent = JSON.stringify(payload, null, 2);
+		}
+		el('examples').onchange = () => {
+			el('request').value = cases.find((c) => c.id === el('examples').value).text;
+			render();
+		};
+		el('run').onclick = render;
+		el('examples').dispatchEvent(new Event('change'));
+	</script>
+</html>
