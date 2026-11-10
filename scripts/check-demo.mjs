@@ -18,7 +18,7 @@ const send = (method, params = {}) =>
 		pending.set(id, resolve);
 		ws.send(JSON.stringify({ id, method, params }));
 	});
-await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 1000, deviceScaleFactor: 1, mobile: false });
+await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
 let ready = false;
 for (let i = 0; i < 50; i++) {
 	const r = await send('Runtime.evaluate', { expression: 'document.getElementById("payload")?.textContent', returnByValue: true });
@@ -29,6 +29,11 @@ for (let i = 0; i < 50; i++) {
 	await new Promise((r) => setTimeout(r, 100));
 }
 assert(ready, 'initial card did not render');
+await send('Runtime.evaluate', { expression: 'document.getElementById("examples").focus()' });
+await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+const focus = await send('Runtime.evaluate', { expression: 'document.activeElement.id', returnByValue: true });
+assert.equal(focus.result.result.value, 'request');
 const result = await send('Runtime.evaluate', {
 	expression: `(()=>{const s=document.getElementById('examples');s.value='integration-rate';s.dispatchEvent(new Event('change'));return {decision:document.getElementById('decision').textContent,card:document.getElementById('card').textContent}})()`,
 	returnByValue: true,
@@ -43,17 +48,17 @@ assert.equal(malicious.result.result.value.injected, false);
 assert.equal(malicious.result.result.value.images, 0);
 assert.match(malicious.result.result.value.text, /Human handoff/);
 await send('Runtime.evaluate', {
-	expression: `document.getElementById('examples').value='integration-rate';document.getElementById('examples').dispatchEvent(new Event('change'))`,
+	expression: `document.activeElement.blur();document.getElementById('examples').value='integration-rate';document.getElementById('examples').dispatchEvent(new Event('change'))`,
 });
 const images = new URL('../docs/images/', import.meta.url);
 await mkdir(images, { recursive: true });
 const screenshot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
 await writeFile(new URL('offline-demo.png', images), Buffer.from(screenshot.result.data, 'base64'));
-await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+await send('Emulation.setDeviceMetricsOverride', { width: 320, height: 800, deviceScaleFactor: 1, mobile: true });
 const mobile = await send('Runtime.evaluate', {
-	expression: 'document.documentElement.scrollWidth <= window.innerWidth',
+	expression: 'window.innerWidth === 320 && document.documentElement.scrollWidth <= 320',
 	returnByValue: true,
 });
 assert.equal(mobile.result.result.value, true);
-console.log('Browser checks passed: initial render, scenario switching, custom input escaping, mobile overflow, screenshot.');
+console.log('Browser checks passed: initial render, keyboard navigation, scenario switching, custom input escaping, mobile overflow, screenshot.');
 ws.close();

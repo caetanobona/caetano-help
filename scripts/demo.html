@@ -1,210 +1,208 @@
 <!doctype html>
 <html lang="en">
-	<meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>
-		Caetano-Help · Offline portfolio demo
-	</title>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>Caetano-Help | Triage preview</title>
 	<style>
-		* {
-			box-sizing: border-box;
+		:root {
+			color-scheme: light;
+			--ink: #1e2527;
+			--muted: #525c60;
+			--line: #d8deda;
+			--paper: #fff;
+			--wash: #f4f6f4;
+			--accent: #542b73;
 		}
+		* { box-sizing: border-box; }
 		body {
 			margin: 0;
-			background: #f5f3f8;
-			color: #222039;
-			font:
-				16px/1.5 system-ui,
-				sans-serif;
+			color: var(--ink);
+			background: var(--paper);
+			font: 16px/1.5 system-ui, sans-serif;
 		}
-		main {
-			max-width: 1160px;
-			margin: auto;
-			padding: 36px 24px;
+		.shell { width: min(1060px, calc(100% - 64px)); margin-inline: auto; }
+		.masthead { border-bottom: 1px solid var(--line); }
+		.masthead .shell {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 12px;
+			min-height: 68px;
 		}
-		h1 {
-			font-size: 36px;
-			line-height: 1.1;
-			margin: 12px 0;
-		}
-		h2 {
-			font-size: 18px;
-		}
-		p {
-			max-width: 78ch;
-		}
-		.tag {
-			color: #5c397d;
-			font-weight: 700;
-			text-transform: uppercase;
-			font-size: 12px;
-			letter-spacing: 0.12em;
-		}
-		.grid {
+		.brand { display: flex; align-items: center; gap: 10px; }
+		.brand img { border-radius: 6px; }
+		.quiet { color: var(--muted); font-size: 0.875rem; }
+		.intro { margin: 36px 0 24px; }
+		h1 { margin: 0; font-size: 2.125rem; line-height: 1.2; letter-spacing: -0.035em; }
+		h2 { margin: 0 0 18px; font-size: 1rem; }
+		p { margin: 8px 0 0; }
+		.workbench {
 			display: grid;
-			grid-template-columns: 1fr 1.25fr;
-			gap: 24px;
-			margin-top: 24px;
+			grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+			border-block: 1px solid var(--line);
 		}
-		.panel {
-			background: white;
-			border: 1px solid #ded9e7;
-			border-radius: 12px;
-			padding: 24px;
-			min-width: 0;
-		}
-		label {
-			font-weight: 600;
-			display: block;
-			margin: 16px 0 8px;
-		}
-		select,
-		textarea,
-		button {
-			font: inherit;
-			border: 1px solid #c8bfd6;
-			border-radius: 6px;
-			padding: 10px;
+		.editor { min-width: 0; padding: 24px; background: var(--wash); }
+		.result { min-width: 0; padding: 24px 0 20px 28px; border-left: 1px solid var(--line); }
+		label { display: block; margin: 16px 0 6px; font-size: 0.875rem; font-weight: 650; }
+		select, textarea, button { font: inherit; }
+		select, textarea {
 			width: 100%;
-			background: white;
+			padding: 9px 11px;
+			border: 1px solid #aeb8b3;
+			border-radius: 4px;
+			background: var(--paper);
+			color: inherit;
 		}
-		textarea {
-			min-height: 150px;
-			resize: vertical;
-		}
-		button {
-			background: #542b73;
+		select, #run { min-height: 44px; }
+		textarea { display: block; min-height: 126px; resize: vertical; }
+		#run {
+			margin-top: 14px;
+			padding: 8px 18px;
+			border: 1px solid transparent;
+			border-radius: 4px;
 			color: white;
-			font-weight: 600;
-			margin-top: 12px;
+			background: var(--accent);
+			font-weight: 650;
 			cursor: pointer;
 		}
-		pre {
-			white-space: pre-wrap;
-			word-break: break-word;
-			font-size: 12px;
-			background: #f7f5fa;
-			padding: 12px;
+		#run:hover { background: #43215d; }
+		:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+		.verdict {
+			display: flex;
+			align-items: baseline;
+			justify-content: space-between;
+			flex-wrap: wrap;
+			gap: 4px 16px;
+			padding-bottom: 12px;
+			border-bottom: 1px solid var(--line);
 		}
+		.verdict strong { font-size: 1.125rem; }
+		.preview-label { margin: 18px 0 8px; color: var(--muted); font-size: 0.875rem; }
 		.message {
 			display: flex;
-			gap: 12px;
+			gap: 10px;
+			border: 1px solid var(--line);
+			border-radius: 6px;
+			padding: 14px;
+			font-size: 0.875rem;
 		}
-		.avatar {
-			background: #542b73;
-			color: white;
-			font-weight: 800;
-			border-radius: 8px;
-			padding: 8px;
-			height: 42px;
-		}
-		.content {
-			min-width: 0;
-			flex: 1;
-		}
-		.block {
-			white-space: pre-wrap;
-			margin: 12px 0;
-			font-size: 14px;
-		}
-		.actions {
-			display: flex;
-			gap: 6px;
-			flex-wrap: wrap;
-		}
+		.avatar { border-radius: 5px; }
+		.content { min-width: 0; flex: 1; }
+		.block { white-space: pre-wrap; margin: 8px 0; overflow-wrap: anywhere; }
+		.block-header { font-size: 1rem; font-weight: 700; }
+		.block-context { color: var(--muted); font-size: 0.8125rem; }
+		.block-divider { border: 0; border-top: 1px solid var(--line); }
+		.actions { display: flex; gap: 6px; flex-wrap: wrap; margin-block: 10px; }
 		.actions button {
-			width: auto;
-			background: #f7f5fa;
-			color: #70677b;
-			font-size: 12px;
-			cursor: default;
+			padding: 4px 8px;
+			border: 1px solid var(--line);
+			border-radius: 4px;
+			background: var(--wash);
+			color: var(--muted);
+			font-size: 0.8125rem;
 		}
-		.notice {
-			font-size: 13px;
-			color: #655d71;
-			border-left: 3px solid #b59acb;
-			padding-left: 12px;
+		.inspect { margin-top: 10px; }
+		summary { cursor: pointer; min-height: 44px; align-content: center; }
+		pre {
+			margin: 0 0 12px;
+			white-space: pre-wrap;
+			overflow-wrap: anywhere;
+			font-size: 0.8125rem;
+			background: var(--wash);
+			padding: 12px;
 		}
-		.sources a {
-			color: #542b73;
-		}
-		details {
-			margin-top: 20px;
-		}
-		@media (max-width: 760px) {
-			.grid {
-				grid-template-columns: 1fr;
-			}
-			main {
-				padding: 20px;
-			}
-			h1 {
-				font-size: 28px;
-			}
+		footer { padding-block: 14px 24px; }
+		@media (max-width: 740px) {
+			.shell { width: calc(100% - 32px); }
+			.intro { margin-top: 24px; }
+			h1 { font-size: 1.75rem; }
+			.workbench { grid-template-columns: minmax(0, 1fr); }
+			.editor { padding: 16px; }
+			.result { padding: 20px 0 14px; border-left: 0; border-top: 1px solid var(--line); }
 		}
 	</style>
-	<main>
-		<span class="tag">AI Engineer & Support Lead · Portfolio</span>
-		<h1>Support that shows its evidence.</h1>
-		<p>
-			Caetano-Help triages fictional AI-tool requests, cites runbooks and prepares human handoffs. Explore the actual deterministic triage
-			and Block Kit payload below.
-		</p>
-		<p class="notice">
-			Offline simulation. No Slack connection, model call, customer data or ticket storage. The automated workerd/D1 suite validates the
-			real persistent workflow. The layout approximates Slack; it is not an official Slack renderer.
-		</p>
-		<div class="grid">
-			<section class="panel">
-				<h2>1. Bring a support request</h2>
-				<label for="examples">Labeled scenario</label
-				><select id="examples"></select
-				><label for="request">Request</label><textarea id="request"></textarea><button id="run">Run triage</button>
-				<h2>What this demonstrates</h2>
-				<p>
-					Signed webhooks · slash commands · modal intake · thread replies · owner permissions · audit history · optimistic concurrency ·
-					lexical evidence retrieval
-				</p>
-				<p class="notice">
-					The real app uses /caetano new, list and status. Buttons act on persisted tickets only inside Slack; they are disabled here.
-				</p>
+</head>
+<body>
+	<header class="masthead">
+		<div class="shell">
+			<div class="brand"><img src="./app-icon.png" width="28" height="28" alt=""><strong>Caetano-Help</strong></div>
+			<span class="quiet">Offline demo</span>
+		</div>
+	</header>
+	<main class="shell">
+		<div class="intro">
+			<h1>Support triage</h1>
+			<p class="quiet">Try a sample request and see what Caetano-Help would post in Slack.</p>
+		</div>
+		<div class="workbench">
+			<section class="editor" aria-labelledby="input-heading">
+				<h2 id="input-heading">Request</h2>
+				<form id="triage-form">
+					<label for="examples">Example</label>
+					<select id="examples"></select>
+					<label for="request">Message</label>
+					<textarea id="request" maxlength="2000" aria-describedby="request-note"></textarea>
+					<p class="quiet" id="request-note">Edit the example or write your own. Use fictional details.</p>
+					<button id="run" type="submit">Run triage</button>
+				</form>
 			</section>
-			<section class="panel">
-				<h2>2. Inspect the response</h2>
+			<section class="result" aria-labelledby="result-heading">
+				<h2 id="result-heading">Triage result</h2>
+				<div class="verdict" role="status">
+					<strong id="outcome"></strong>
+					<span id="route" class="quiet"></span>
+				</div>
+				<p class="preview-label">Slack message preview</p>
 				<div class="message">
-					<div class="avatar">CH</div>
+					<img class="avatar" src="./app-icon.png" width="32" height="32" alt="">
 					<div class="content">
-						<strong>Caetano-Help</strong><span class="tag"> APP</span>
+						<strong>Caetano-Help</strong>
 						<div id="card"></div>
 					</div>
 				</div>
-				<details>
-					<summary>Structured decision</summary>
-					<pre id="decision"></pre>
-				</details>
-				<details>
-					<summary>Actual Block Kit payload</summary>
-					<pre id="payload"></pre>
-				</details>
+				<div class="inspect quiet">
+					<details>
+						<summary>Triage decision (JSON)</summary>
+						<pre id="decision"></pre>
+					</details>
+					<details>
+						<summary>Slack payload (JSON)</summary>
+						<pre id="payload"></pre>
+					</details>
+				</div>
 			</section>
 		</div>
-		<p class="notice">
-			Evidence is fictional. This is retrieval plus templates, not model-generated RAG. Classification is intentionally conservative and
-			limited; production accuracy has not been established.
-		</p>
+		<footer class="quiet">Runs locally with sample runbooks. The message is a preview, so ticket actions are disabled.</footer>
 	</main>
 	<script type="module">
 		import { triage } from './triage.js';
 		import { ticketCard } from './slack-ui.js';
 		import { cases } from './cases.js';
 		const el = (id) => document.getElementById(id);
-		for (const item of cases) {
+		const exampleLabels = {
+			'access-sso': 'SSO sign-in denied',
+			'integration-rate': 'API rate limit (429)',
+			'use-case-summary': 'New use case',
+			vague: 'Request with missing details',
+			security: 'Reported data exposure',
+		};
+		const outcomes = {
+			guide: 'Runbook guidance found',
+			clarify: 'More information needed',
+			escalate: 'Human review recommended',
+		};
+		for (const [id, label] of Object.entries(exampleLabels)) {
 			const option = document.createElement('option');
-			option.value = item.id;
-			option.textContent = item.id;
+			option.value = id;
+			option.textContent = label;
 			el('examples').append(option);
 		}
 		function render() {
 			const text = el('request').value;
 			const decision = triage(text);
+			el('outcome').textContent = outcomes[decision.action];
+			el('route').textContent = decision.route;
 			const ticket = {
 				id: 'CH-OFFLINE-PREVIEW',
 				status: 'open',
@@ -217,9 +215,25 @@
 			const payload = ticketCard(ticket);
 			el('card').replaceChildren();
 			for (const block of payload.blocks) {
-				const element = document.createElement('div');
-				element.className = 'block';
-				if (block.text) element.textContent = block.text.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+				const element = document.createElement(block.type === 'divider' ? 'hr' : 'div');
+				element.className = `block block-${block.type}`;
+				const textObjects = block.type === 'context' ? block.elements : block.text ? [block.text] : [];
+				textObjects.forEach((item, index) => {
+					if (index) element.append(' · ');
+					const value = item.type === 'mrkdwn'
+						? item.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+						: item.text;
+					const parts = item.type === 'mrkdwn' ? value.split(/\*([^*]+)\*/) : [value];
+					parts.forEach((part, partIndex) => {
+						if (partIndex % 2 === 0) {
+							element.append(part);
+						} else {
+							const strong = document.createElement('strong');
+							strong.textContent = part;
+							element.append(strong);
+						}
+					});
+				});
 				if (block.type === 'actions') {
 					element.className = 'actions';
 					for (const action of block.elements) {
@@ -238,7 +252,11 @@
 			el('request').value = cases.find((c) => c.id === el('examples').value).text;
 			render();
 		};
-		el('run').onclick = render;
+		el('triage-form').onsubmit = (event) => {
+			event.preventDefault();
+			render();
+		};
 		el('examples').dispatchEvent(new Event('change'));
 	</script>
+</body>
 </html>
