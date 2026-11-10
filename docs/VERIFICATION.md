@@ -1,5 +1,14 @@
 # Verification record
 
+On 2026-11-10, a live Slack mention created a D1 ticket and posted its card
+in the thread. After the card and form update, all 74 automated tests passed
+with remote bindings disabled, and the Worker update was deployed. The
+latest offline screenshot shows the updated card. Use the
+[Slack smoke test](SLACK_SETUP.md#live-smoke-test) to verify the full workflow
+on a specific installation.
+
+## Initial offline baseline
+
 Validated in the cloud checkout on 2026-11-10 with Node.js 24.22.1.
 
 | Check | Result |

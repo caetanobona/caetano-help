@@ -50,7 +50,7 @@ Buttons carry ticket ID and version, not authority. A conditional SQL update
 ensures one action wins for a version. Replays/stale clicks receive a private
 explanation and cannot append another state-change audit row. Each successful
 transition posts a fresh card in the original thread; older cards are stale.
-`/caetano status ID` reads durable state, shows the latest 20 audit events and
+`/caetano-help status ID` reads durable state, shows the latest 20 audit events and
 returns an authorized current-version ephemeral card with buttons, so a failed
 notification does not leave the workflow stuck on a stale card. Full audit
 records remain in D1. Modal request details are visible in the card, not just
@@ -59,7 +59,8 @@ stored behind a hidden ID.
 ## Delivery guarantees
 
 Ticket intake uses unique `(team, source_key)` keys. Events use the Slack event
-ID; modal submissions use the view ID. Concurrent duplicate deliveries create
+ID, command forms use the view ID, and message shortcuts use the channel and
+source message timestamp. Concurrent duplicate deliveries create
 one ticket and one creation audit entry. They also reserve a unique delivery
 attempt before contacting Slack, so duplicates do not start another initial
 post. State transitions use unique per-version delivery keys.
@@ -97,8 +98,10 @@ checks, deadlines, fallback and a separately reviewed free/local model setup.
 `npm run eval` outputs category/route/action/source accuracy and per-category
 counts for 24 synthetic development cases. The cases informed the rules; this
 is not a held-out test, safety certification or production accuracy claim.
-Negation and novel paraphrases remain limitations. Decisions use the first 280
-normalized characters. There is no conversation memory beyond ticket state.
+Negation and novel paraphrases remain limitations. Triage reads up to 2,000
+characters and limits its summary to 280. The requester can update a ticket
+that needs clarification. The update reruns triage, advances the ticket
+version, and records the change in the same transaction.
 
 ## Data, costs and retention
 
@@ -110,7 +113,6 @@ There is no scheduled retention job; the owner must delete demo data when done.
 Slack's own free-plan retention does not delete the D1 copy. External deletion
 and workspace uninstall handling would be required for production.
 
-The default installation is local D1; its UUID is a placeholder and no remote
-resource has been provisioned. Nothing automatically enables a paid model,
-Slack plan, Cloudflare plan or paid service. Owner provisioning must stay within
-their available free limits; no unlimited capacity or current quota is claimed.
+The test suite uses local D1 with remote bindings disabled. Live installations
+use a separately provisioned D1 database. See [Slack and Cloudflare setup](SLACK_SETUP.md)
+for deployment configuration and the smoke test.

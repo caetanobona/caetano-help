@@ -1,14 +1,11 @@
 # Five-minute demonstration
 
-## 1. Start with the reason (30 seconds)
+## 1. Introduce the workflow (30 seconds)
 
-“I built this for an AI Engineer & Support Lead application because I wanted
-hands-on experience with Slack app APIs. It demonstrates a complete local
-support workflow, uses fictional data and has automated tests. It is not a
-production deployment or evidence of professional Slack experience.”
-
-Show the README screenshot and architecture diagram. Do not claim live Slack
-verification until you have done the [owner checklist](SLACK_SETUP.md).
+Caetano-Help turns Slack requests about AI tools into tickets that people can
+track in the original channel. Open the README preview and trace a request
+from Slack through the Worker, D1, and the reply card using the
+[architecture diagram](ARCHITECTURE.md).
 
 ## 2. Explore evidence offline (60 seconds)
 
@@ -37,8 +34,8 @@ history. The three portfolio scenarios each reach resolution in tests:
 | `Orbit AI API returns 429` | RB-INTEGRATION / Integration Engineering |
 | `Can Atlas AI summarize support tickets for a new use case?` | RB-USECASE / AI Enablement |
 
-In real Slack after your review, use `/caetano new`, `/caetano list`,
-`/caetano queue` (configured support only), and `/caetano status ID`.
+In real Slack after your review, use `/caetano-help new`, `/caetano-help list`,
+`/caetano-help queue` (configured support only), and `/caetano-help status ID`.
 Requesters can escalate/resolve their own tickets. Only the configured support
 allowlist may claim requests. Resolved requests are terminal. No actual on-call
 page, external ticket or team assignment outside this app is created.
