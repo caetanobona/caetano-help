@@ -1,29 +1,69 @@
-import {
-	env,
-	createExecutionContext,
-	waitOnExecutionContext,
-	SELF,
-} from "cloudflare:test";
-import { describe, it, expect } from "vitest";
+import { createExecutionContext } from "cloudflare:test";
+import { describe, expect, it } from "vitest";
 import worker from "../src/index";
 
-// For now, you'll need to do something like this to get a correctly-typed
-// `Request` to pass to `worker.fetch()`.
+const env = {
+  SLACK_SIGNING_SECRET: "test-signing-secret",
+  SLACK_BOT_TOKEN: "test-bot-token",
+};
 const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
+const url = "https://example.com/slack/events";
+const challenge = JSON.stringify({ type: "url_verification", challenge: "abc123" });
 
-describe("Hello World worker", () => {
-	it("responds with Hello World! (unit style)", async () => {
-		const request = new IncomingRequest("http://example.com");
-		// Create an empty context to pass to `worker.fetch()`.
-		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, env, ctx);
-		// Wait for all `Promise`s passed to `ctx.waitUntil()` to settle before running test assertions
-		await waitOnExecutionContext(ctx);
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
-	});
+async function signedHeaders(body: string, timestamp = Math.floor(Date.now() / 1000)) {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(env.SLACK_SIGNING_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign("HMAC", key, encoder.encode(`v0:${timestamp}:${body}`));
+  const hex = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+  return {
+    "X-Slack-Request-Timestamp": String(timestamp),
+    "X-Slack-Signature": `v0=${hex}`,
+  };
+}
 
-	it("responds with Hello World! (integration style)", async () => {
-		const response = await SELF.fetch("https://example.com");
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
-	});
+describe("Slack events endpoint", () => {
+  it("rejects paths and methods outside POST /slack/events", async () => {
+    const ctx = createExecutionContext();
+    const wrongPath = await worker.fetch(new IncomingRequest("https://example.com"), env, ctx);
+    const wrongMethod = await worker.fetch(new IncomingRequest(url), env, ctx);
+    expect(wrongPath.status).toBe(404);
+    expect(wrongMethod.status).toBe(405);
+    expect(wrongMethod.headers.get("Allow")).toBe("POST");
+  });
+
+  it("echoes a signed Slack challenge", async () => {
+    const request = new IncomingRequest(url, {
+      method: "POST",
+      body: challenge,
+      headers: await signedHeaders(challenge),
+    });
+    const response = await worker.fetch(request, env, createExecutionContext());
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("abc123");
+  });
+
+  it("rejects a body modified after signing", async () => {
+    const request = new IncomingRequest(url, {
+      method: "POST",
+      body: challenge.replace("abc123", "tampered"),
+      headers: await signedHeaders(challenge),
+    });
+    expect((await worker.fetch(request, env, createExecutionContext())).status).toBe(401);
+  });
+
+  it("rejects old signed requests", async () => {
+    const timestamp = Math.floor(Date.now() / 1000) - 301;
+    const request = new IncomingRequest(url, {
+      method: "POST",
+      body: challenge,
+      headers: await signedHeaders(challenge, timestamp),
+    });
+    expect((await worker.fetch(request, env, createExecutionContext())).status).toBe(401);
+  });
 });
