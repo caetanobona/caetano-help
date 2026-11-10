@@ -1,0 +1,20 @@
+name: Offline checks
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+      WRANGLER_LOG_PATH: /tmp/caetano-ci-wrangler
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:types
+      - run: npm test -- --run
+      - run: npm run eval
+      - run: npm run db:local
+      - run: npx wrangler deploy --dry-run --outdir /tmp/caetano-build
