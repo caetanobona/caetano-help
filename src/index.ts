@@ -1,17 +1,23 @@
 import { verifySlackRequest } from './signature';
+import { handleSupport, intakeFromEvent } from './support';
 import { formatReply, triage } from './triage';
 
 interface Env {
 	SLACK_SIGNING_SECRET: string;
 	SLACK_BOT_TOKEN: string;
+	DB?: D1Database;
+	SUPPORT_USER_IDS?: string;
+	SLACK_TEAM_ID?: string;
 }
 
 interface SlackPayload {
 	type?: string;
 	challenge?: string;
 	event_id?: string;
+	team_id?: string;
 	event?: {
 		type?: string;
+		user?: string;
 		channel?: string;
 		ts?: string;
 		thread_ts?: string;
@@ -23,6 +29,9 @@ interface SlackPayload {
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+		if (['/slack/commands', '/slack/interactions'].includes(new URL(request.url).pathname)) {
+			return handleSupport(request, env, ctx);
+		}
 		if (new URL(request.url).pathname !== '/slack/events') {
 			return new Response('Not Found', { status: 404 });
 		}
@@ -95,6 +104,26 @@ export default {
 		// https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil
 		// shortcut: reenvios podem gerar respostas duplicadas. Deduplicar por
 		// event_id com armazenamento persistente antes de usar fora da demo.
+		if (env.DB) {
+			if (!env.SLACK_TEAM_ID || body.team_id !== env.SLACK_TEAM_ID)
+				return new Response('Workspace not configured or authorized', { status: 403 });
+			if (
+				typeof body.team_id !== 'string' ||
+				!body.team_id ||
+				typeof event.user !== 'string' ||
+				!event.user ||
+				typeof body.event_id !== 'string' ||
+				!body.event_id
+			) {
+				return new Response('Missing event context', { status: 400 });
+			}
+			ctx.waitUntil(
+				intakeFromEvent(env, body.team_id, event.channel, event.user, body.event_id, event.text ?? '', threadTs).catch(() =>
+					console.error('Support workflow failed', { code: 'workflow_error' }),
+				),
+			);
+			return new Response('OK');
+		}
 		ctx.waitUntil(postReply(env.SLACK_BOT_TOKEN, event.channel, threadTs, formatReply(triage(event.text ?? ''))));
 
 		return new Response('OK');

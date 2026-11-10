@@ -1,19 +1,22 @@
 {
-  "name": "caetano-help",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-    "deploy": "wrangler deploy",
-    "dev": "wrangler dev",
-    "start": "wrangler dev",
-    "test": "vitest",
-    "cf-typegen": "wrangler types"
-  },
-  "devDependencies": {
-    "@cloudflare/vitest-plugin": "^1.4.3",
-    "@types/node": "^26.6.6",
-    "typescript": "^5.5.2",
-    "vitest": "~5.0.3",
-    "wrangler": "^4.159.0"
-  }
+	"name": "caetano-help",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"test": "vitest",
+		"cf-typegen": "wrangler types",
+		"test:types": "tsc --noEmit && tsc --noEmit -p test/tsconfig.json",
+		"db:local": "wrangler d1 migrations apply DB --local"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-plugin": "^1.4.3",
+		"@slack/types": "3.3.0",
+		"@types/node": "^26.6.6",
+		"typescript": "^5.5.2",
+		"vitest": "~5.0.3",
+		"wrangler": "^4.159.0"
+	}
 }
