@@ -12,7 +12,9 @@ Cloudflare D1.
 A mention about an Orbit AI sync returning `429` opens a ticket. The bot replies in the thread with guidance on
 `Retry-After` and cites the integration runbook.
 
-![Slack thread showing an Orbit AI rate-limit request and the RB-INTEGRATION guidance](docs/images/slack-runbook-guidance.png)
+<p align="center">
+  <img src="docs/images/slack-runbook-guidance.png" width="328" alt="Slack thread showing an Orbit AI rate-limit request and the RB-INTEGRATION guidance">
+</p>
 
 ### 2. Add context to an existing ticket
 
@@ -20,7 +22,9 @@ The first card asks which tool is affected. The requester selects **Add details*
 and describes the Atlas AI SSO failure. The bot cites `RB-ACCESS` and keeps the
 same ticket ID.
 
-![Two Slack cards in the same thread showing a clarification question and the updated guidance for the same ticket](docs/images/slack-request-clarification.png)
+<p align="center">
+  <img src="docs/images/slack-request-clarification.png" width="328" alt="Two Slack cards in the same thread showing a clarification question and the updated guidance for the same ticket">
+</p>
 
 ### 3. Escalate a request for human review
 
@@ -28,7 +32,9 @@ A reported workspace-wide login issue prompts a recommendation for human review.
 Selecting **Need human review** moves the ticket to **Awaiting human review** and
 keeps the handoff summary in the thread.
 
-![Slack cards showing a human review recommendation and the transition to Awaiting human review](docs/images/slack-human-review.png)
+<p align="center">
+  <img src="docs/images/slack-human-review.png" width="328" alt="Slack cards showing a human review recommendation and the transition to Awaiting human review">
+</p>
 
 ## Try the demo
 
